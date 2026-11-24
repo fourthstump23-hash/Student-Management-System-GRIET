@@ -22,6 +22,7 @@ DB_PORT = int(os.getenv("DB_PORT", 3306))
 def get_db_connection(use_database=True):
     """
     Establish and return a connection to the MySQL database.
+    Automatically enables TLS/SSL encryption when connecting to Cloud MySQL (e.g. TiDB Cloud, Aiven).
     """
     config = {
         "host": DB_HOST,
@@ -32,6 +33,26 @@ def get_db_connection(use_database=True):
         "collation": "utf8mb4_unicode_ci",
         "autocommit": False
     }
+
+    # If connecting to a cloud database (not localhost), configure SSL seamlessly
+    if DB_HOST not in ("localhost", "127.0.0.1"):
+        config["ssl_disabled"] = False
+        ca_path = os.getenv("DB_SSL_CA")
+        if ca_path and os.path.exists(ca_path):
+            config["ssl_ca"] = ca_path
+            config["ssl_verify_cert"] = True
+        elif os.path.exists("/etc/ssl/certs/ca-certificates.crt"):
+            # Standard Linux CA bundle (used by Vercel)
+            config["ssl_ca"] = "/etc/ssl/certs/ca-certificates.crt"
+            config["ssl_verify_cert"] = True
+        elif os.path.exists("/etc/pki/tls/certs/ca-bundle.crt"):
+            # Amazon Linux / RedHat CA bundle
+            config["ssl_ca"] = "/etc/pki/tls/certs/ca-bundle.crt"
+            config["ssl_verify_cert"] = True
+        else:
+            # Fallback: SSL encrypted connection without local CA file requirement
+            config["ssl_verify_cert"] = False
+
     if use_database:
         config["database"] = DB_NAME
 

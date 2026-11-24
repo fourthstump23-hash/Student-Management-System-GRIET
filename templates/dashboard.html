@@ -1,0 +1,223 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - GRIET Student Management System{% endblock %}
+
+{% block topbar_actions %}
+  <a href="{{ url_for('reports') }}" class="btn btn-primary btn-sm">
+    <span>View All 8 Lab Reports &rarr;</span>
+  </a>
+{% endblock %}
+
+{% block content %}
+
+<!-- SQL Query Used Box for Dashboard -->
+<div class="sql-box">
+  <div class="sql-box-header">
+    <div class="sql-box-title">
+      <span class="badge-sql">SQL</span>
+      <span>Dashboard Analytics & Course Average Query</span>
+    </div>
+    <button type="button" class="copy-btn" onclick="copySQL(this)">📋 Copy SQL</button>
+  </div>
+  <pre>SELECT c.course_name AS Course, AVG(g.marks) AS Average_Marks
+FROM Grades g
+JOIN Enrollment e ON g.enroll_id = e.enroll_id
+JOIN Courses c ON e.course_id = c.course_id
+GROUP BY c.course_name;</pre>
+</div>
+
+<!-- Stat Metric Cards -->
+<div class="grid-4" style="margin-bottom: 24px;">
+  <div class="stat-card blue">
+    <div class="stat-icon blue">👨‍🎓</div>
+    <div class="stat-info">
+      <h3>{{ student_count }}</h3>
+      <p>Total Students</p>
+    </div>
+  </div>
+
+  <div class="stat-card emerald">
+    <div class="stat-icon emerald">📚</div>
+    <div class="stat-info">
+      <h3>{{ course_count }}</h3>
+      <p>Total Courses</p>
+    </div>
+  </div>
+
+  <div class="stat-card amber">
+    <div class="stat-icon amber">📝</div>
+    <div class="stat-info">
+      <h3>{{ enrollment_count }}</h3>
+      <p>Enrollments</p>
+    </div>
+  </div>
+
+  <div class="stat-card indigo">
+    <div class="stat-icon indigo">🎯</div>
+    <div class="stat-info">
+      <h3>{{ grade_count }}</h3>
+      <p>Grades Awarded</p>
+    </div>
+  </div>
+</div>
+
+<!-- Main Dashboard Grid: Chart + Table -->
+<div class="grid-2">
+  <!-- Chart.js Card -->
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <div class="card-title">📊 Average Marks per Course</div>
+        <div class="card-subtitle">Real-time aggregate performance computed using SQL JOIN & GROUP BY</div>
+      </div>
+      <span class="badge badge-primary">Chart.js</span>
+    </div>
+    
+    <div style="position: relative; height: 320px; width: 100%;">
+      <canvas id="courseAvgChart"></canvas>
+    </div>
+
+    <div style="margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--border); display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+      {% for item in course_averages %}
+        <div style="font-size: 0.78rem;">
+          <span style="color: var(--text-secondary); font-weight: 500;">{{ item.Course }}:</span>
+          <strong style="color: var(--primary);">{{ "%.1f"|format(item.Average_Marks) }}</strong>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Top Performers Table Card -->
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <div class="card-title">🏆 Top Performers (Marks > 85)</div>
+        <div class="card-subtitle">Students with outstanding scores</div>
+      </div>
+      <a href="{{ url_for('reports', tab='top_performers') }}" class="btn btn-sm btn-secondary">Full Report</a>
+    </div>
+
+    <div class="table-responsive">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Student</th>
+            <th>Course</th>
+            <th>Marks</th>
+            <th>Grade</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if top_performers %}
+            {% for row in top_performers %}
+              <tr>
+                <td style="font-weight: 600;">{{ row.Student }}</td>
+                <td>{{ row.Course }}</td>
+                <td><strong style="color: var(--success);">{{ row.marks }}</strong></td>
+                <td>
+                  <span class="badge badge-grade-{{ row.grade.lower() }}">{{ row.grade }}</span>
+                </td>
+              </tr>
+            {% endfor %}
+          {% else %}
+            <tr>
+              <td colspan="4" style="text-align: center; color: var(--text-muted); padding: 20px;">No top performers found</td>
+            </tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Quick Performance Summary -->
+    <div style="margin-top: 20px; padding: 14px; background: #f8fafc; border-radius: var(--radius-md); border: 1px solid var(--border);">
+      <div style="font-size: 0.8rem; font-weight: 700; color: var(--secondary); text-transform: uppercase; margin-bottom: 8px;">
+        💡 Lab Verification Check
+      </div>
+      <p style="font-size: 0.82rem; color: var(--text-secondary); margin: 0;">
+        Initial seed data expected averages: 
+        <strong>Database Systems (86)</strong>, 
+        <strong>Operating Systems (87.5)</strong>, 
+        <strong>Computer Networks (78)</strong>, 
+        <strong>Software Engineering (88)</strong>.
+      </p>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // Render Chart.js Course Averages
+  const chartLabels = {{ chart_labels | tojson }};
+  const chartData = {{ chart_data | tojson }};
+
+  const ctx = document.getElementById('courseAvgChart').getContext('2d');
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: chartLabels,
+      datasets: [{
+        label: 'Average Marks',
+        data: chartData,
+        backgroundColor: [
+          'rgba(37, 99, 235, 0.75)',
+          'rgba(16, 185, 129, 0.75)',
+          'rgba(245, 158, 11, 0.75)',
+          'rgba(99, 102, 241, 0.75)'
+        ],
+        borderColor: [
+          '#1d4ed8',
+          '#059669',
+          '#d97706',
+          '#4f46e5'
+        ],
+        borderWidth: 2,
+        borderRadius: 8,
+        borderSkipped: false
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          display: false
+        },
+        tooltip: {
+          backgroundColor: '#0f172a',
+          titleFont: { family: 'Inter', size: 13, weight: 'bold' },
+          bodyFont: { family: 'Inter', size: 12 },
+          padding: 10,
+          callbacks: {
+            label: function(context) {
+              return ` Avg Score: ${context.parsed.y.toFixed(2)}`;
+            }
+          }
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          max: 100,
+          ticks: {
+            stepSize: 20,
+            font: { family: 'Inter', size: 11 }
+          },
+          grid: {
+            color: '#f1f5f9'
+          }
+        },
+        x: {
+          ticks: {
+            font: { family: 'Inter', size: 11, weight: '600' }
+          },
+          grid: {
+            display: false
+          }
+        }
+      }
+    }
+  });
+</script>
+{% endblock %}

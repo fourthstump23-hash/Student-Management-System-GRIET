@@ -1,0 +1,195 @@
+{% extends "base.html" %}
+
+{% block title %}Students - GRIET Student Management System{% endblock %}
+
+{% block topbar_actions %}
+  <button type="button" class="btn btn-primary btn-sm" onclick="openModal('addStudentModal')">
+    <span>+ Add Student</span>
+  </button>
+{% endblock %}
+
+{% block content %}
+
+<!-- SQL Query Demonstration Box -->
+<div class="sql-box">
+  <div class="sql-box-header">
+    <div class="sql-box-title">
+      <span class="badge-sql">SQL</span>
+      <span>Query: Fetch All Students</span>
+    </div>
+    <button type="button" class="copy-btn" onclick="copySQL(this)">📋 Copy SQL</button>
+  </div>
+  <pre>SELECT * FROM Students;</pre>
+</div>
+
+<!-- Main Table Card -->
+<div class="card">
+  <div class="card-header">
+    <div>
+      <div class="card-title">👨‍🎓 Student Directory</div>
+      <div class="card-subtitle">Manage registered GRIET engineering students</div>
+    </div>
+    <span class="badge badge-primary" id="student-count-badge">{{ students|length }} records</span>
+  </div>
+
+  <!-- Toolbar with Search -->
+  <div class="table-toolbar">
+    <div class="search-box">
+      <span class="search-icon">🔍</span>
+      <input type="text" class="search-input" placeholder="Search by name, ID, class, email..." 
+             data-table="studentsTable" data-count-target="student-count-badge">
+    </div>
+    <button type="button" class="btn btn-primary" onclick="openModal('addStudentModal')">
+      + New Student
+    </button>
+  </div>
+
+  <div class="table-responsive">
+    <table class="data-table" id="studentsTable">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Full Name</th>
+          <th>Class / Section</th>
+          <th>Email Address</th>
+          <th>Phone Number</th>
+          <th>Date of Birth</th>
+          <th style="text-align: right;">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if students %}
+          {% for student in students %}
+            <tr>
+              <td><strong style="color: var(--primary);">#{{ student.student_id }}</strong></td>
+              <td style="font-weight: 600;">{{ student.name }}</td>
+              <td><span class="badge badge-secondary">{{ student.class }}</span></td>
+              <td><a href="mailto:{{ student.email }}" style="color: var(--accent); text-decoration: none;">{{ student.email }}</a></td>
+              <td>{{ student.phone }}</td>
+              <td>{{ student.dob }}</td>
+              <td style="text-align: right; white-space: nowrap;">
+                <button type="button" class="btn btn-sm btn-outline-primary" 
+                        onclick="openEditStudentModal({{ student.student_id }}, '{{ student.name|escape }}', '{{ student.class|escape }}', '{{ student.email|escape }}', '{{ student.phone|escape }}', '{{ student.dob }}')">
+                  Edit
+                </button>
+                <form action="{{ url_for('delete_student', student_id=student.student_id) }}" method="POST" 
+                      onsubmit="return confirm('Are you sure you want to delete student {{ student.name }} (ID: {{ student.student_id }})? This will fail if enrollments exist.');" 
+                      style="display: inline-block;">
+                  <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                </form>
+              </td>
+            </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 30px;">
+              No students found in the database.
+            </td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Add Student Modal -->
+<div class="modal-backdrop" id="addStudentModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Add New Student</h3>
+      <button type="button" class="alert-close" onclick="closeModal('addStudentModal')">&times;</button>
+    </div>
+    <form action="{{ url_for('add_student') }}" method="POST">
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Student ID (Primary Key) *</label>
+          <input type="number" name="student_id" class="form-control" value="{{ next_student_id }}" required>
+          <div class="form-hint">Unique integer identifier for the student.</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Full Name *</label>
+          <input type="text" name="name" class="form-control" placeholder="e.g. Varun Kumar" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Class / Section *</label>
+          <input type="text" name="class" class="form-control" placeholder="e.g. CSE-A, CSE-B" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Email Address *</label>
+          <input type="email" name="email" class="form-control" placeholder="e.g. varun@griet.in" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Phone Number *</label>
+          <input type="text" name="phone" class="form-control" placeholder="e.g. 9876543210" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Date of Birth *</label>
+          <input type="date" name="dob" class="form-control" required>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('addStudentModal')">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save Student</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Edit Student Modal -->
+<div class="modal-backdrop" id="editStudentModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Edit Student Details</h3>
+      <button type="button" class="alert-close" onclick="closeModal('editStudentModal')">&times;</button>
+    </div>
+    <form id="editStudentForm" method="POST">
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Student ID (Read-only)</label>
+          <input type="text" id="edit_student_id_display" class="form-control" disabled>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Full Name *</label>
+          <input type="text" name="name" id="edit_name" class="form-control" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Class / Section *</label>
+          <input type="text" name="class" id="edit_class" class="form-control" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Email Address *</label>
+          <input type="email" name="email" id="edit_email" class="form-control" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Phone Number *</label>
+          <input type="text" name="phone" id="edit_phone" class="form-control" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Date of Birth *</label>
+          <input type="date" name="dob" id="edit_dob" class="form-control" required>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('editStudentModal')">Cancel</button>
+        <button type="submit" class="btn btn-primary">Update Student</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+  function openEditStudentModal(id, name, studentClass, email, phone, dob) {
+    document.getElementById("editStudentForm").action = "/students/edit/" + id;
+    document.getElementById("edit_student_id_display").value = id;
+    document.getElementById("edit_name").value = name;
+    document.getElementById("edit_class").value = studentClass;
+    document.getElementById("edit_email").value = email;
+    document.getElementById("edit_phone").value = phone;
+    document.getElementById("edit_dob").value = dob;
+    openModal("editStudentModal");
+  }
+</script>
+{% endblock %}

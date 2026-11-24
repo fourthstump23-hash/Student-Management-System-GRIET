@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+
+{% block title %}Lab Reports - GRIET Student Management System{% endblock %}
+
+{% block topbar_actions %}
+  <a href="{{ url_for('dashboard') }}" class="btn btn-secondary btn-sm">&larr; Back to Dashboard</a>
+{% endblock %}
+
+{% block content %}
+
+<!-- Tab Selection Header -->
+<div class="tabs-nav">
+  <a href="{{ url_for('reports', tab='course_avg') }}" 
+     class="tab-btn {% if active_tab == 'course_avg' %}active{% endif %}">
+    <span class="badge-pill">A</span> Course Averages
+  </a>
+
+  <a href="{{ url_for('reports', tab='top_performers') }}" 
+     class="tab-btn {% if active_tab == 'top_performers' %}active{% endif %}">
+    <span class="badge-pill">B</span> Top Performers (> 85)
+  </a>
+
+  <a href="{{ url_for('reports', tab='courses_per_student') }}" 
+     class="tab-btn {% if active_tab == 'courses_per_student' %}active{% endif %}">
+    <span class="badge-pill">C</span> Courses Per Student
+  </a>
+
+  <a href="{{ url_for('reports', tab='grade_a') }}" 
+     class="tab-btn {% if active_tab == 'grade_a' %}active{% endif %}">
+    <span class="badge-pill">D</span> Grade 'A' Students
+  </a>
+
+  <a href="{{ url_for('reports', tab='student_avg') }}" 
+     class="tab-btn {% if active_tab == 'student_avg' %}active{% endif %}">
+    <span class="badge-pill">E</span> Student Averages (Ranked)
+  </a>
+
+  <a href="{{ url_for('reports', tab='course_enrollment') }}" 
+     class="tab-btn {% if active_tab == 'course_enrollment' %}active{% endif %}">
+    <span class="badge-pill">F</span> Enrollment Count (LEFT JOIN)
+  </a>
+
+  <a href="{{ url_for('reports', tab='student_performance') }}" 
+     class="tab-btn {% if active_tab == 'student_performance' %}active{% endif %}">
+    <span class="badge-pill">G</span> Student_Performance Table
+  </a>
+
+  <a href="{{ url_for('reports', tab='course_101_avg') }}" 
+     class="tab-btn {% if active_tab == 'course_101_avg' %}active{% endif %}">
+    <span class="badge-pill">H</span> Course 101 Average
+  </a>
+</div>
+
+<!-- SQL Query Used Demonstration Box -->
+<div class="sql-box">
+  <div class="sql-box-header">
+    <div class="sql-box-title">
+      <span class="badge-sql">SQL LAB QUERY [{{ active_tab_letter|upper }}]</span>
+      <span>{{ active_tab_title }}</span>
+    </div>
+    <div style="display: flex; gap: 8px;">
+      {% if active_tab == 'student_performance' %}
+        <form action="{{ url_for('recalculate_performance') }}" method="POST" style="margin: 0;">
+          <button type="submit" class="copy-btn" style="background: rgba(37, 99, 235, 0.4); border-color: #2563eb;">
+            🔄 Recompute Performance
+          </button>
+        </form>
+      {% endif %}
+      <button type="button" class="copy-btn" onclick="copySQL(this)">📋 Copy SQL</button>
+    </div>
+  </div>
+  <pre>{{ current_query|trim }}</pre>
+</div>
+
+<!-- Report Table Card -->
+<div class="card">
+  <div class="card-header">
+    <div>
+      <div class="card-title">{{ active_tab_title }}</div>
+      <div class="card-subtitle">{{ active_tab_description }}</div>
+    </div>
+    <span class="badge badge-primary" id="report-count-badge">{{ report_data|length }} records</span>
+  </div>
+
+  <!-- Search Toolbar -->
+  <div class="table-toolbar">
+    <div class="search-box">
+      <span class="search-icon">🔍</span>
+      <input type="text" class="search-input" placeholder="Search result records..." 
+             data-table="reportTable" data-count-target="report-count-badge">
+    </div>
+  </div>
+
+  <div class="table-responsive">
+    <table class="data-table" id="reportTable">
+      <thead>
+        <tr>
+          {% if columns %}
+            {% for col in columns %}
+              <th>{{ col|replace('_', ' ')|title }}</th>
+            {% endfor %}
+          {% else %}
+            <th>Result</th>
+          {% endif %}
+        </tr>
+      </thead>
+      <tbody>
+        {% if report_data %}
+          {% for row in report_data %}
+            <tr>
+              {% for col in columns %}
+                <td>
+                  {% set val = row[col] %}
+                  {% if col.lower() == 'grade' %}
+                    <span class="badge badge-grade-{{ val.lower() }}">{{ val }}</span>
+                  {% elif col.lower() in ['averagemarks', 'average_marks', 'avgmarks', 'avg_marks'] %}
+                    <strong style="color: var(--primary);">{{ "%.2f"|format(val) }}</strong>
+                  {% elif col.lower() == 'marks' %}
+                    <strong style="color: {% if val >= 85 %}var(--success){% elif val >= 70 %}var(--accent){% else %}var(--warning){% endif %};">
+                      {{ val }}
+                    </strong>
+                  {% elif col.lower() in ['student', 'studentname', 'student_name'] %}
+                    <span style="font-weight: 600; color: var(--text-primary);">{{ val }}</span>
+                  {% elif col.lower() in ['course', 'course_name'] %}
+                    <span style="font-weight: 500;">{{ val }}</span>
+                  {% else %}
+                    {{ val }}
+                  {% endif %}
+                </td>
+              {% endfor %}
+            </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="{{ columns|length if columns else 1 }}" style="text-align: center; color: var(--text-muted); padding: 30px;">
+              No records returned for this query.
+            </td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% endblock %}

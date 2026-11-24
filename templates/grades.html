@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+
+{% block title %}Grades - GRIET Student Management System{% endblock %}
+
+{% block topbar_actions %}
+  <button type="button" class="btn btn-primary btn-sm" onclick="openModal('addGradeModal')">
+    <span>+ Record Grade</span>
+  </button>
+{% endblock %}
+
+{% block content %}
+
+<!-- SQL Query Demonstration Box -->
+<div class="sql-box">
+  <div class="sql-box-header">
+    <div class="sql-box-title">
+      <span class="badge-sql">SQL</span>
+      <span>Query: Fetch Student Grades with Course & Enrollment JOIN (ORDER BY s.name)</span>
+    </div>
+    <button type="button" class="copy-btn" onclick="copySQL(this)">📋 Copy SQL</button>
+  </div>
+  <pre>SELECT s.name AS StudentName, c.course_name AS Course, g.marks, g.grade
+FROM Grades g
+JOIN Enrollment e ON g.enroll_id = e.enroll_id
+JOIN Students s ON e.student_id = s.student_id
+JOIN Courses c ON e.course_id = c.course_id
+ORDER BY s.name;</pre>
+</div>
+
+<!-- Grades Table Card -->
+<div class="card">
+  <div class="card-header">
+    <div>
+      <div class="card-title">🎯 Academic Grades & Marks</div>
+      <div class="card-subtitle">Official evaluation scores and letter grades by student and course</div>
+    </div>
+    <span class="badge badge-primary" id="grade-count-badge">{{ grades|length }} records</span>
+  </div>
+
+  <!-- Toolbar with Search -->
+  <div class="table-toolbar">
+    <div class="search-box">
+      <span class="search-icon">🔍</span>
+      <input type="text" class="search-input" placeholder="Search by student, course, grade, marks..." 
+             data-table="gradesTable" data-count-target="grade-count-badge">
+    </div>
+    <button type="button" class="btn btn-primary" onclick="openModal('addGradeModal')">
+      + Record Grade
+    </button>
+  </div>
+
+  <div class="table-responsive">
+    <table class="data-table" id="gradesTable">
+      <thead>
+        <tr>
+          <th>Grade ID</th>
+          <th>Student Name</th>
+          <th>Course</th>
+          <th>Marks (Out of 100)</th>
+          <th>Letter Grade</th>
+          <th style="text-align: right;">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if grades %}
+          {% for row in grades %}
+            <tr>
+              <td><strong style="color: var(--secondary);">#{{ row.grade_id }}</strong></td>
+              <td style="font-weight: 600; color: var(--primary);">{{ row.StudentName }}</td>
+              <td>{{ row.Course }}</td>
+              <td>
+                <strong style="font-size: 1rem; color: {% if row.marks >= 85 %}var(--success){% elif row.marks >= 70 %}var(--accent){% else %}var(--warning){% endif %};">
+                  {{ row.marks }}
+                </strong>
+                <span style="font-size: 0.75rem; color: var(--text-muted);">/ 100</span>
+              </td>
+              <td>
+                <span class="badge badge-grade-{{ row.grade.lower() }}">{{ row.grade }}</span>
+              </td>
+              <td style="text-align: right;">
+                <form action="{{ url_for('delete_grade', grade_id=row.grade_id) }}" method="POST" 
+                      onsubmit="return confirm('Delete grade record #{{ row.grade_id }} for {{ row.StudentName }}?');" 
+                      style="display: inline-block;">
+                  <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                </form>
+              </td>
+            </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 30px;">
+              No grades recorded yet.
+            </td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Add Grade Modal -->
+<div class="modal-backdrop" id="addGradeModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Record Student Grade</h3>
+      <button type="button" class="alert-close" onclick="closeModal('addGradeModal')">&times;</button>
+    </div>
+    <form action="{{ url_for('add_grade') }}" method="POST">
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Grade ID *</label>
+          <input type="number" name="grade_id" class="form-control" value="{{ next_grade_id }}" required>
+          <div class="form-hint">Unique primary key for this grade entry.</div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Select Course Enrollment *</label>
+          <select name="enroll_id" class="form-select" required>
+            <option value="" disabled selected>-- Choose Enrollment (Student - Course) --</option>
+            {% for en in enrollments_list %}
+              <option value="{{ en.enroll_id }}">
+                #{{ en.enroll_id }}: {{ en.StudentName }} &bull; {{ en.Course }} ({{ en.semester }})
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="grid-2">
+          <div class="form-group">
+            <label class="form-label">Marks (0 to 100) *</label>
+            <input type="number" name="marks" id="marks-input" class="form-control" min="0" max="100" placeholder="e.g. 92" required>
+            <div class="form-hint">Grade updates automatically.</div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Grade Letter *</label>
+            <select name="grade" id="grade-select" class="form-select" required>
+              <option value="A">A (Outstanding &ge; 90)</option>
+              <option value="B">B (Very Good 80-89)</option>
+              <option value="C">C (Good 70-79)</option>
+              <option value="D">D (Pass 60-69)</option>
+              <option value="F">F (Fail &lt; 60)</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('addGradeModal')">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save Grade</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% endblock %}

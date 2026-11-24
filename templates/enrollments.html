@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+
+{% block title %}Enrollments - GRIET Student Management System{% endblock %}
+
+{% block topbar_actions %}
+  <button type="button" class="btn btn-primary btn-sm" onclick="openModal('enrollStudentModal')">
+    <span>+ Enroll Student</span>
+  </button>
+{% endblock %}
+
+{% block content %}
+
+<!-- SQL Query Demonstration Box -->
+<div class="sql-box">
+  <div class="sql-box-header">
+    <div class="sql-box-title">
+      <span class="badge-sql">SQL</span>
+      <span>Query: Fetch Student Course Enrollments (INNER JOIN)</span>
+    </div>
+    <button type="button" class="copy-btn" onclick="copySQL(this)">📋 Copy SQL</button>
+  </div>
+  <pre>SELECT s.name AS StudentName, c.course_name AS Course, e.semester
+FROM Enrollment e
+JOIN Students s ON e.student_id = s.student_id
+JOIN Courses c ON e.course_id = c.course_id;</pre>
+</div>
+
+<!-- Enrollments Table Card -->
+<div class="card">
+  <div class="card-header">
+    <div>
+      <div class="card-title">📝 Course Enrollments</div>
+      <div class="card-subtitle">Active student course registrations and semester tracking</div>
+    </div>
+    <span class="badge badge-primary" id="enrollment-count-badge">{{ enrollments|length }} records</span>
+  </div>
+
+  <!-- Toolbar with Search -->
+  <div class="table-toolbar">
+    <div class="search-box">
+      <span class="search-icon">🔍</span>
+      <input type="text" class="search-input" placeholder="Search by student name, course, semester..." 
+             data-table="enrollmentsTable" data-count-target="enrollment-count-badge">
+    </div>
+    <button type="button" class="btn btn-primary" onclick="openModal('enrollStudentModal')">
+      + Enroll Student
+    </button>
+  </div>
+
+  <div class="table-responsive">
+    <table class="data-table" id="enrollmentsTable">
+      <thead>
+        <tr>
+          <th>Enroll ID</th>
+          <th>Student Name</th>
+          <th>Enrolled Course</th>
+          <th>Semester</th>
+          <th style="text-align: right;">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if enrollments %}
+          {% for row in enrollments %}
+            <tr>
+              <td><strong style="color: var(--secondary);">#{{ row.enroll_id }}</strong></td>
+              <td style="font-weight: 600; color: var(--primary);">{{ row.StudentName }}</td>
+              <td>{{ row.Course }}</td>
+              <td><span class="badge badge-secondary">{{ row.semester }}</span></td>
+              <td style="text-align: right;">
+                <form action="{{ url_for('delete_enrollment', enroll_id=row.enroll_id) }}" method="POST" 
+                      onsubmit="return confirm('Remove enrollment record #{{ row.enroll_id }} ({{ row.StudentName }} in {{ row.Course }})? If grades are recorded, they must be removed first.');" 
+                      style="display: inline-block;">
+                  <button type="submit" class="btn btn-sm btn-outline-danger">Unenroll / Delete</button>
+                </form>
+              </td>
+            </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 30px;">
+              No course enrollments found in the database.
+            </td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Enroll Student Modal -->
+<div class="modal-backdrop" id="enrollStudentModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Enroll Student in Course</h3>
+      <button type="button" class="alert-close" onclick="closeModal('enrollStudentModal')">&times;</button>
+    </div>
+    <form action="{{ url_for('add_enrollment') }}" method="POST">
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Enrollment ID *</label>
+          <input type="number" name="enroll_id" class="form-control" value="{{ next_enroll_id }}" required>
+          <div class="form-hint">Unique primary key for this enrollment record.</div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Select Student *</label>
+          <select name="student_id" class="form-select" required>
+            <option value="" disabled selected>-- Choose Student --</option>
+            {% for s in students_list %}
+              <option value="{{ s.student_id }}">
+                #{{ s.student_id }} - {{ s.name }} ({{ s.class }})
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Select Course *</label>
+          <select name="course_id" class="form-select" required>
+            <option value="" disabled selected>-- Choose Course --</option>
+            {% for c in courses_list %}
+              <option value="{{ c.course_id }}">
+                CS-{{ c.course_id }} - {{ c.course_name }} ({{ c.credits }} credits)
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Semester *</label>
+          <select name="semester" class="form-select" required>
+            <option value="Sem-1">Sem-1</option>
+            <option value="Sem-2">Sem-2</option>
+            <option value="Sem-3">Sem-3</option>
+            <option value="Sem-4">Sem-4</option>
+            <option value="Sem-5" selected>Sem-5</option>
+            <option value="Sem-6">Sem-6</option>
+            <option value="Sem-7">Sem-7</option>
+            <option value="Sem-8">Sem-8</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('enrollStudentModal')">Cancel</button>
+        <button type="submit" class="btn btn-primary">Enroll Now</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% endblock %}

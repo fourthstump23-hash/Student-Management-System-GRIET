@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}GRIET - Student Management System{% endblock %}</title>
+  
+  <!-- Modern Inter & JetBrains Mono Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  
+  <!-- Chart.js CDN for Analytics -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+  <!-- Custom Stylesheet -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+
+  <!-- Sidebar Navigation -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-logo">G</div>
+      <div class="sidebar-branding">
+        <h2>GRIET SMS</h2>
+        <span>DBMS Laboratory</span>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-label">Main Menu</div>
+      
+      <a href="{{ url_for('dashboard') }}" class="nav-link {% if active_page == 'dashboard' %}active{% endif %}">
+        <span class="nav-icon">📊</span>
+        <span>Dashboard</span>
+      </a>
+
+      <a href="{{ url_for('students') }}" class="nav-link {% if active_page == 'students' %}active{% endif %}">
+        <span class="nav-icon">👨‍🎓</span>
+        <span>Students</span>
+      </a>
+
+      <a href="{{ url_for('courses') }}" class="nav-link {% if active_page == 'courses' %}active{% endif %}">
+        <span class="nav-icon">📚</span>
+        <span>Courses</span>
+      </a>
+
+      <a href="{{ url_for('enrollments') }}" class="nav-link {% if active_page == 'enrollments' %}active{% endif %}">
+        <span class="nav-icon">📝</span>
+        <span>Enrollments</span>
+      </a>
+
+      <a href="{{ url_for('grades') }}" class="nav-link {% if active_page == 'grades' %}active{% endif %}">
+        <span class="nav-icon">🎯</span>
+        <span>Grades</span>
+      </a>
+
+      <div class="nav-label">Analytics & Lab</div>
+
+      <a href="{{ url_for('reports') }}" class="nav-link {% if active_page == 'reports' %}active{% endif %}">
+        <span class="nav-icon">📈</span>
+        <span>Lab Reports (8 Queries)</span>
+      </a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="db-status-pill">
+        <span class="status-dot"></span>
+        <span>MySQL 8.0 &bull; student_db</span>
+      </div>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px;">
+        <span style="font-size: 0.72rem; color: #94a3b8;">GRIET CSE Lab</span>
+        <form action="{{ url_for('reset_database') }}" method="POST" onsubmit="return confirm('Reset database back to original lab schema & seed data?');" style="display: inline;">
+          <button type="submit" class="btn btn-sm btn-secondary" style="font-size: 0.68rem; padding: 2px 6px;" title="Reset DB to pristine initial state">
+            ↻ Reset DB
+          </button>
+        </form>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main Application Area -->
+  <main class="main-content">
+    <!-- Topbar Header -->
+    <header class="topbar">
+      <div class="topbar-title">
+        <h1>Student Management System - GRIET</h1>
+        <p>Gokaraju Rangaraju Institute of Engineering and Technology &bull; Dept of CSE</p>
+      </div>
+      <div class="topbar-actions">
+        <span class="badge badge-primary">DBMS Project</span>
+        {% block topbar_actions %}{% endblock %}
+      </div>
+    </header>
+
+    <!-- Main Content Container -->
+    <div class="content-body">
+      <!-- Flash Alert Messages -->
+      <div class="flash-container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="alert alert-{{ category if category != 'error' else 'danger' }}">
+                <div style="display: flex; align-items: flex-start; gap: 8px;">
+                  <span>
+                    {% if category == 'success' %}✓
+                    {% elif category == 'danger' or category == 'error' %}⚠️
+                    {% elif category == 'warning' %}⚡
+                    {% else %}ℹ️{% endif %}
+                  </span>
+                  <span>{{ message }}</span>
+                </div>
+                <button type="button" class="alert-close" aria-label="Close">&times;</button>
+              </div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+      </div>
+
+      <!-- Page Block Content -->
+      {% block content %}{% endblock %}
+    </div>
+  </main>
+
+  <!-- Global Application Scripts -->
+  <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>
